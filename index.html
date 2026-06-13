@@ -1,24 +1,34 @@
 <!DOCTYPE html>
 <html>
 <body>
-<h1>PS5 Controller Test</h1>
-<button id="start">Start Controller</button>
-<div id="status">Tap Start, then press a controller button.</div>
+<h1>PS5 Smart Remote</h1>
+
+<button id="start">Start</button>
+
+<div id="status">Waiting...</div>
 
 <script>
 const status = document.getElementById('status');
 
-document.getElementById('start').addEventListener('click', () => {
-  status.innerText = 'Started. Press controller buttons now.';
+document.getElementById('start').onclick = () => {
   loop();
-});
+};
 
 function loop() {
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
   const pad = [...pads].find(Boolean);
 
   if (pad) {
-    status.innerText = 'Connected: ' + pad.id;
+    const pressed = [];
+
+    pad.buttons.forEach((b, i) => {
+      if (b.pressed) pressed.push(i);
+    });
+
+    status.innerText =
+      pressed.length
+        ? 'Pressed: ' + pressed.join(', ')
+        : 'No buttons pressed';
   }
 
   requestAnimationFrame(loop);
