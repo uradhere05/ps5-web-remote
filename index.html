@@ -2,16 +2,27 @@
 <html>
 <body>
 <h1>PS5 Controller Test</h1>
-<div id="status">Waiting for controller...</div>
+<button id="start">Start Controller</button>
+<div id="status">Tap Start, then press a controller button.</div>
+
 <script>
+const status = document.getElementById('status');
+
+document.getElementById('start').addEventListener('click', () => {
+  status.innerText = 'Started. Press controller buttons now.';
+  loop();
+});
+
 function loop() {
-  const pad = navigator.getGamepads()[0];
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  const pad = [...pads].find(Boolean);
+
   if (pad) {
-    document.getElementById('status').innerText = 'Connected: ' + pad.id;
+    status.innerText = 'Connected: ' + pad.id;
   }
+
   requestAnimationFrame(loop);
 }
-loop();
 </script>
 </body>
 </html>
