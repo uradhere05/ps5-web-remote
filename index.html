@@ -21,24 +21,79 @@ const SPOTIFY_CLIENT_ID = '8b5a11f19d5c4086842261b1a9aa35e7';
 const SPOTIFY_REDIRECT_URI = 'https://uradhere05.github.io/ps5-web-remote/';
 const SPOTIFY_SCOPE = 'user-read-playback-state user-modify-playback-state user-read-currently-playing';
 
-document.getElementById('spotifyLogin').onclick = () => {
+async function sha256(plain) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plain);
+  return await crypto.subtle.digest('SHA-256', data);
+}
+
+function base64UrlEncode(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+function randomString(length) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  const values = crypto.getRandomValues(new Uint8Array(length));
+  for (let i = 0; i < length; i++) {
+    result += chars[values[i] % chars.length];
+  }
+  return result;
+}
+
+document.getElementById('spotifyLogin').onclick = async () => {
+  const verifier = randomString(64);
+  localStorage.setItem('spotifyVerifier', verifier);
+  const challenge = base64UrlEncode(await sha256(verifier));
+
   const authUrl =
     'https://accounts.spotify.com/authorize' +
     '?client_id=' + encodeURIComponent(SPOTIFY_CLIENT_ID) +
-    '&response_type=token' +
+    '&response_type=code' +
     '&redirect_uri=' + encodeURIComponent(SPOTIFY_REDIRECT_URI) +
-    '&scope=' + encodeURIComponent(SPOTIFY_SCOPE);
+    '&scope=' + encodeURIComponent(SPOTIFY_SCOPE) +
+    '&code_challenge_method=S256' +
+    '&code_challenge=' + encodeURIComponent(challenge);
 
   window.location.href = authUrl;
 };
 
-if (window.location.hash.includes('access_token')) {
-  const params = new URLSearchParams(window.location.hash.substring(1));
-  const token = params.get('access_token');
-  if (token) {
-    localStorage.setItem('spotifyToken', token);
+async function exchangeSpotifyCode(code) {
+  const verifier = localStorage.getItem('spotifyVerifier');
+
+  const body = new URLSearchParams({
+    client_id: SPOTIFY_CLIENT_ID,
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: SPOTIFY_REDIRECT_URI,
+    code_verifier: verifier
+  });
+
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+
+  const data = await res.json();
+
+  if (data.access_token) {
+    localStorage.setItem('spotifyToken', data.access_token);
+    if (data.refresh_token) localStorage.setItem('spotifyRefreshToken', data.refresh_token);
     history.replaceState(null, '', SPOTIFY_REDIRECT_URI);
+    status.innerText = 'Spotify logged in';
+  } else {
+    status.innerText = 'Spotify login failed: ' + JSON.stringify(data);
   }
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const spotifyCode = urlParams.get('code');
+if (spotifyCode) {
+  exchangeSpotifyCode(spotifyCode);
 }
 
 const fields = {
