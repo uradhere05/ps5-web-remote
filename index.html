@@ -3,32 +3,58 @@
 <body>
 <h1>PS5 Smart Remote</h1>
 
-<button id="start">Start</button>
+<input id="url" placeholder="Paste Voice Monkey URL here" style="width:100%;font-size:16px;">
+<button id="save">Save URL</button>
+<button id="start">Start Controller</button>
 
 <div id="status">Waiting...</div>
 
 <script>
 const status = document.getElementById('status');
+const urlInput = document.getElementById('url');
+
+urlInput.value = localStorage.getItem('voiceMonkeyUrl') || '';
+
+document.getElementById('save').onclick = () => {
+  localStorage.setItem('voiceMonkeyUrl', urlInput.value.trim());
+  status.innerText = 'URL saved.';
+};
 
 document.getElementById('start').onclick = () => {
+  status.innerText = 'Started. Press X.';
   loop();
 };
 
+let lastTrigger = 0;
+
+async function triggerVoiceMonkey() {
+  const url = localStorage.getItem('voiceMonkeyUrl');
+  if (!url) {
+    status.innerText = 'No URL saved.';
+    return;
+  }
+
+  status.innerText = 'X pressed → triggering Alexa...';
+
+  try {
+    await fetch(url, { mode: 'no-cors' });
+    status.innerText = 'Triggered!';
+  } catch (err) {
+    status.innerText = 'Error: ' + err.message;
+  }
+}
+
 function loop() {
-  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-  const pad = [...pads].find(Boolean);
+  const pad = [...navigator.getGamepads()].find(Boolean);
 
   if (pad) {
-    const pressed = [];
+    const xPressed = pad.buttons[0].pressed;
+    const now = Date.now();
 
-    pad.buttons.forEach((b, i) => {
-      if (b.pressed) pressed.push(i);
-    });
-
-    status.innerText =
-      pressed.length
-        ? 'Pressed: ' + pressed.join(', ')
-        : 'No buttons pressed';
+    if (xPressed && now - lastTrigger > 3000) {
+      lastTrigger = now;
+      triggerVoiceMonkey();
+    }
   }
 
   requestAnimationFrame(loop);
