@@ -3,42 +3,55 @@
 <body>
 <h1>PS5 Smart Remote</h1>
 
-<input id="url" placeholder="Paste Voice Monkey URL here" style="width:100%;font-size:16px;">
-<button id="save">Save URL</button>
+<input id="lightUrl" placeholder="Lights ON URL" style="width:100%;font-size:16px;"><br><br>
+<input id="blindsOpenUrl" placeholder="Blinds OPEN URL" style="width:100%;font-size:16px;"><br><br>
+<input id="blindsCloseUrl" placeholder="Blinds CLOSE URL" style="width:100%;font-size:16px;"><br><br>
+
+<button id="save">Save URLs</button>
 <button id="start">Start Controller</button>
 
 <div id="status">Waiting...</div>
 
 <script>
 const status = document.getElementById('status');
-const urlInput = document.getElementById('url');
 
-urlInput.value = localStorage.getItem('voiceMonkeyUrl') || '';
+const fields = {
+  lightUrl: document.getElementById('lightUrl'),
+  blindsOpenUrl: document.getElementById('blindsOpenUrl'),
+  blindsCloseUrl: document.getElementById('blindsCloseUrl')
+};
+
+Object.keys(fields).forEach(key => {
+  fields[key].value = localStorage.getItem(key) || '';
+});
 
 document.getElementById('save').onclick = () => {
-  localStorage.setItem('voiceMonkeyUrl', urlInput.value.trim());
-  status.innerText = 'URL saved.';
+  Object.keys(fields).forEach(key => {
+    localStorage.setItem(key, fields[key].value.trim());
+  });
+  status.innerText = 'URLs saved.';
 };
 
 document.getElementById('start').onclick = () => {
-  status.innerText = 'Started. Press X.';
+  status.innerText = 'Started. X = lights, stick up/down = blinds.';
   loop();
 };
 
-let lastTrigger = 0;
+let lastLight = 0;
+let lastBlinds = 0;
+let stickWasCentered = true;
 
-async function triggerVoiceMonkey() {
-  const url = localStorage.getItem('voiceMonkeyUrl');
+async function trigger(key, label) {
+  const url = localStorage.getItem(key);
   if (!url) {
-    status.innerText = 'No URL saved.';
+    status.innerText = 'Missing URL for ' + label;
     return;
   }
 
-  status.innerText = 'X pressed → triggering Alexa...';
+  status.innerText = label + ' triggered';
 
   try {
     await fetch(url, { mode: 'no-cors' });
-    status.innerText = 'Triggered!';
   } catch (err) {
     status.innerText = 'Error: ' + err.message;
   }
@@ -48,12 +61,34 @@ function loop() {
   const pad = [...navigator.getGamepads()].find(Boolean);
 
   if (pad) {
-    const xPressed = pad.buttons[0].pressed;
     const now = Date.now();
 
-    if (xPressed && now - lastTrigger > 3000) {
-      lastTrigger = now;
-      triggerVoiceMonkey();
+    const xPressed = pad.buttons[0].pressed;
+    const leftY = pad.axes[1];
+
+    const stickUp = leftY < -0.7;
+    const stickDown = leftY > 0.7;
+    const stickCentered = leftY > -0.3 && leftY < 0.3;
+
+    if (xPressed && now - lastLight > 3000) {
+      lastLight = now;
+      trigger('lightUrl', 'Lights ON');
+    }
+
+    if (stickCentered) {
+      stickWasCentered = true;
+    }
+
+    if (stickUp && stickWasCentered && now - lastBlinds > 3000) {
+      stickWasCentered = false;
+      lastBlinds = now;
+      trigger('blindsOpenUrl', 'Blinds OPEN');
+    }
+
+    if (stickDown && stickWasCentered && now - lastBlinds > 3000) {
+      stickWasCentered = false;
+      lastBlinds = now;
+      trigger('blindsCloseUrl', 'Blinds CLOSE');
     }
   }
 
