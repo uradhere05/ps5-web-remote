@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h1>PS5 Controller Test</h1>
+<div id="status">Waiting for controller...</div>
+<script>
+function loop() {
+  const pad = navigator.getGamepads()[0];
+  if (pad) {
+    document.getElementById('status').innerText = 'Connected: ' + pad.id;
+  }
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
