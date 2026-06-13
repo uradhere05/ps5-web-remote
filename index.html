@@ -2,6 +2,7 @@
 <html>
 <body>
 <h1>PS5 Smart Remote</h1>
+<button id="spotifyLogin">Login Spotify</button>
 
 <input id="lightOnUrl" placeholder="Lights ON URL" style="width:100%;font-size:16px;"><br><br>
 <input id="lightOffUrl" placeholder="Lights OFF URL" style="width:100%;font-size:16px;"><br><br>
@@ -15,6 +16,30 @@
 
 <script>
 const status = document.getElementById('status');
+
+const SPOTIFY_CLIENT_ID = '8b5a11f19d5c4086842261b1a9aa35e7';
+const SPOTIFY_REDIRECT_URI = 'https://uradhere05.github.io/ps5-web-remote/';
+const SPOTIFY_SCOPE = 'user-read-playback-state user-modify-playback-state user-read-currently-playing';
+
+document.getElementById('spotifyLogin').onclick = () => {
+  const authUrl =
+    'https://accounts.spotify.com/authorize' +
+    '?client_id=' + encodeURIComponent(SPOTIFY_CLIENT_ID) +
+    '&response_type=token' +
+    '&redirect_uri=' + encodeURIComponent(SPOTIFY_REDIRECT_URI) +
+    '&scope=' + encodeURIComponent(SPOTIFY_SCOPE);
+
+  window.location.href = authUrl;
+};
+
+if (window.location.hash.includes('access_token')) {
+  const params = new URLSearchParams(window.location.hash.substring(1));
+  const token = params.get('access_token');
+  if (token) {
+    localStorage.setItem('spotifyToken', token);
+    history.replaceState(null, '', SPOTIFY_REDIRECT_URI);
+  }
+}
 
 const fields = {
   lightOnUrl: document.getElementById('lightOnUrl'),
