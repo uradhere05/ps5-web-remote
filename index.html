@@ -35,6 +35,7 @@ document.getElementById('save').onclick = () => {
 let lightsOn = false;
 let lastLight = 0;
 let lastBlinds = 0;
+let lastSpotify = 0;
 let started = false;
 
 async function fire(urlKey, label) {
@@ -60,6 +61,7 @@ function loop() {
     const now = Date.now();
 
     const xPressed = pad.buttons[0].pressed;
+    const trianglePressed = pad.buttons[3].pressed;
     const leftY = pad.axes[1];
 
     if (xPressed && now - lastLight > 1500) {
@@ -77,6 +79,12 @@ function loop() {
     if (leftY < -0.7 && now - lastBlinds > 3000) {
       lastBlinds = now;
       fire('blindsOpenUrl', 'Blinds OPEN');
+    }
+
+    if (trianglePressed && now - lastSpotify > 2000) {
+      lastSpotify = now;
+      status.innerText = 'Opening Spotify';
+      window.location.href = 'spotify://';
     }
   }
 
