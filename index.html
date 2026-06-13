@@ -3,9 +3,9 @@
 <body>
 <h1>PS5 Smart Remote</h1>
 
-<input id="lightUrl" placeholder="Lights ON URL" style="width:100%;font-size:16px;"><br><br>
+<input id="lightOnUrl" placeholder="Lights ON URL" style="width:100%;font-size:16px;"><br><br>
+<input id="lightOffUrl" placeholder="Lights OFF URL" style="width:100%;font-size:16px;"><br><br>
 <input id="blindsOpenUrl" placeholder="Blinds OPEN URL" style="width:100%;font-size:16px;"><br><br>
-<input id="blindsCloseUrl" placeholder="Blinds CLOSE URL" style="width:100%;font-size:16px;"><br><br>
 
 <button id="save">Save URLs</button>
 <button id="start">Start Controller</button>
@@ -16,9 +16,9 @@
 const status = document.getElementById('status');
 
 const fields = {
-  lightUrl: document.getElementById('lightUrl'),
-  blindsOpenUrl: document.getElementById('blindsOpenUrl'),
-  blindsCloseUrl: document.getElementById('blindsCloseUrl')
+  lightOnUrl: document.getElementById('lightOnUrl'),
+  lightOffUrl: document.getElementById('lightOffUrl'),
+  blindsOpenUrl: document.getElementById('blindsOpenUrl')
 };
 
 Object.keys(fields).forEach(key => {
@@ -29,22 +29,18 @@ document.getElementById('save').onclick = () => {
   Object.keys(fields).forEach(key => {
     localStorage.setItem(key, fields[key].value.trim());
   });
-  status.innerText = 'URLs saved.';
+  status.innerText = 'URLs saved';
 };
 
-document.getElementById('start').onclick = () => {
-  status.innerText = 'Started. X = lights, stick up/down = blinds.';
-  loop();
-};
-
+let lightsOn = false;
 let lastLight = 0;
 let lastBlinds = 0;
-let stickWasCentered = true;
+let started = false;
 
-async function trigger(key, label) {
-  const url = localStorage.getItem(key);
+async function fire(urlKey, label) {
+  const url = localStorage.getItem(urlKey);
   if (!url) {
-    status.innerText = 'Missing URL for ' + label;
+    status.innerText = 'Missing URL: ' + label;
     return;
   }
 
@@ -52,8 +48,8 @@ async function trigger(key, label) {
 
   try {
     await fetch(url, { mode: 'no-cors' });
-  } catch (err) {
-    status.innerText = 'Error: ' + err.message;
+  } catch (e) {
+    console.log(e);
   }
 }
 
@@ -66,34 +62,34 @@ function loop() {
     const xPressed = pad.buttons[0].pressed;
     const leftY = pad.axes[1];
 
-    const stickUp = leftY < -0.7;
-    const stickDown = leftY > 0.7;
-    const stickCentered = leftY > -0.3 && leftY < 0.3;
-
-    if (xPressed && now - lastLight > 3000) {
+    if (xPressed && now - lastLight > 1500) {
       lastLight = now;
-      trigger('lightUrl', 'Lights ON');
+
+      if (lightsOn) {
+        fire('lightOffUrl', 'Lights OFF');
+      } else {
+        fire('lightOnUrl', 'Lights ON');
+      }
+
+      lightsOn = !lightsOn;
     }
 
-    if (stickCentered) {
-      stickWasCentered = true;
-    }
-
-    if (stickUp && stickWasCentered && now - lastBlinds > 3000) {
-      stickWasCentered = false;
+    if (leftY < -0.7 && now - lastBlinds > 3000) {
       lastBlinds = now;
-      trigger('blindsOpenUrl', 'Blinds OPEN');
-    }
-
-    if (stickDown && stickWasCentered && now - lastBlinds > 3000) {
-      stickWasCentered = false;
-      lastBlinds = now;
-      trigger('blindsCloseUrl', 'Blinds CLOSE');
+      fire('blindsOpenUrl', 'Blinds OPEN');
     }
   }
 
   requestAnimationFrame(loop);
 }
+
+document.getElementById('start').onclick = () => {
+  if (!started) {
+    started = true;
+    status.innerText = 'Controller started';
+    loop();
+  }
+};
 </script>
 </body>
 </html>
